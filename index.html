@@ -1,0 +1,295 @@
+<html>
+	<div id="canvas-container" style="text-align: center;">
+
+	</div>
+</html>
+
+<script>
+	var canvas = document.createElement("canvas");
+	var ctx = canvas.getContext("2d");
+
+	var container = document.getElementById("canvas-container")
+
+	container.appendChild(canvas);
+	
+	canvas.style.border='1px solid red';
+	canvas.style.background='#ccc'
+
+	var offX, offY;
+
+	// array of images on canvas
+	var images = [];
+
+	// starting position of image
+	var xStart, yStart;
+
+	// selected image index
+	var selectedImage;
+
+	var dragging;
+
+	// create images and load into array
+	var image1 = new Image();
+	image1.src="assets/cat.png";
+
+	image1.onload = function() {
+		images.push({
+			x: 30,
+			y: 10,
+			width: 200,
+			height: 186,
+			image: image1
+		})
+
+		// draw image on canvas
+		draw()
+	}	
+
+	var image2 = new Image();
+	image2.src="assets/dog.png";
+	image2.onload = function() {
+		images.push({
+			x: 300,
+			y: 10,
+			width: 300,
+			height: 284,
+			image: image2
+		})
+
+		// draw image on canvas
+		draw()
+	}
+
+	// listen for mouse events
+	canvas.onmousedown = mouseDown;
+	canvas.onmouseup = mouseUp;
+	canvas.onmousemove = mouseMove;
+	canvas.onmouseout = mouseOut;
+	
+
+	function windowResize() {
+		// resize window and keep 16/9 size
+		canvas.height = window.innerHeight;
+		canvas.width = canvas.height*(16/9)
+
+		// make sure re-sized canvas isn't larger than window
+		if(canvas.width>window.innerWidth) {
+			canvas.width = window.innerWidth
+			canvas.height = canvas.width*(9/16)
+		}
+
+		// calculate canvas position
+		offX = canvas.getBoundingClientRect().left;
+		offY = canvas.getBoundingClientRect().top;
+
+		// check if images are outside borders of canvas
+		images.forEach(function(i) {
+			checkImageOverlap(i)
+		})
+
+		draw()
+	}
+
+	// check if image is over edge of canvas and update image position
+	function checkImageOverlap(img) {
+		// check edges, top and bottom
+		var horizantalD = canvas.width-(img.x+img.width);
+		var verticalD = canvas.height-(img.y+img.height)
+
+		// reposition images if their coordinates are outside the canvas
+		if(horizantalD<0) img.x=canvas.width-img.width;
+		if(verticalD<0) img.y=canvas.height-img.height;	
+	}
+
+	windowResize();
+	window.onresize = windowResize
+	canvas.onresize = windowResize
+
+	// function to check if mouse is over image
+	function mouseInImage(mouseX, mouseY, image) {
+		// check if it's an image
+		if(image.image) {
+			var left = image.x;
+			var right = image.x+image.width;
+			var top = image.y;
+			var bottom = image.y+image.height;
+
+			if(mouseX>left && mouseX<right && mouseY>top && mouseY<bottom) {
+
+				return true;
+			}
+		}
+
+		// mouse is not on any image/item
+		return false;
+	}
+
+	// check if mouse is pressed down
+	function mouseDown(e) {
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		// get mouse coordinates
+		xStart = parseInt(e.clientX - offX);
+		yStart = parseInt(e.clientY - offY);
+
+		// check if mouse coordinates fall within any of the images
+		for(var i=0; i<images.length; i++) {
+			if(mouseInImage(xStart, yStart, images[i])) {
+				// mouse coordinates are in the image, set selected image
+ 				selectedImage = i;
+				
+				// image can now be dragged
+				dragging = true;
+
+				// return;
+			}
+		}
+	}
+
+	// check if mouse up
+	function mouseUp(e) {
+		if(!dragging) {
+			return;
+		}
+
+		e.preventDefault()
+		e.stopPropagation();
+
+		// mouse up, so no longer dragging
+		dragging = false;
+
+		draw();
+	}
+
+	function mouseMove(e) {
+		// no image was selected, and nothing is being dragged
+		if(!dragging) {
+			return;
+		}
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		// current mouse coordinates
+		var mouseX = parseInt(e.clientX - offX);
+		var mouseY = parseInt(e.clientY - offY);
+
+		// distance mouse has dragged since previous position
+		var xDistance = mouseX-xStart;
+		var yDistance = mouseY-yStart;
+
+		// get the selected image from the array
+		var image = images[selectedImage];
+
+		// calculate when image would be at the edge of the canvas
+		var minX = mouseX-image.x;
+		var maxX = canvas.width-(image.width-minX);
+		var minY = mouseY-image.y;
+		var maxY = canvas.height-(image.height-minY);
+
+		// update selected image coordinates based on direction mouse is dragging and edges of canvas
+
+		// check if mouse is dragging left or right
+		if(xDistance<0) { // mouse is dragging left
+			// only update the coordinates if mouse position is within canvas bounds
+			if(mouseX>=minX) {
+				if(image.x+xDistance<0) {
+					image.x = 0;
+				}else {
+					image.x+=xDistance;
+				}
+			}
+		}else if(xDistance>0) { // mouse is dragging right
+			if(mouseX<=maxX) {
+			 	// only update the coordinates if mouse position is within canvas
+
+			 	if((image.x+xDistance)>(canvas.width-image.width)) {
+			 		image.x = canvas.width-image.width;
+			 	}else {
+			 		image.x+=xDistance;
+			 	}
+			 }
+		}else {
+			// position is 0, mouse is not moving left or right
+			image.x+=xDistance;
+		}
+
+		// check if mouse is moving up or down
+		if(yDistance<0) { // mouse is dragging up
+			// only update the y coordinates if mouse position is within canvas
+			if(mouseY>=minY) {
+				if(image.y+yDistance<0) {
+					image.y = 0;
+				}else {
+					image.y+=yDistance;
+				}
+			}
+		}else if(yDistance>0) { // mouse is dragging down
+			// update the y coordinates if mouse position is within canvas
+			if(mouseY<=maxY) {
+				if(image.y+yDistance > (canvas.height-image.height)) {
+						image.y = canvas.height-image.height;
+					} else {
+						image.y+=yDistance;
+					}
+			}
+		}else {
+			// yDistance is 0, mouse is not moving up or down
+			image.y+=yDistance;
+		}
+
+		draw();
+
+		// update new starting coordinates of mouse
+		xStart = mouseX;
+		yStart = mouseY;
+
+	}
+
+	function mouseOut(e) {
+		// mouse is not dragging anything
+		if(!dragging) {
+			return ;
+		}
+
+		e.preventDefault();
+		e.stopPropagation();
+
+		// mouse is out, no longer dragging
+		dragging = false;
+
+		draw();
+
+	}
+
+	function draw() {
+		// clear canvas
+		ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+		// redraw canvas
+		for(var i=0; i<images.length; i++) {
+			var image = images[i];
+
+			// check that this is an image
+			if(image.image) {
+				// check if the image is being dragged to add green border
+				if(i==selectedImage && dragging) {
+					ctx.strokeStyle = "green";
+					ctx.lineWidth = 2;
+
+					//draw green outline
+					ctx.strokeRect(image.x, image.y, image.width, image.height)
+
+					// draw image
+					ctx.drawImage(image.image, image.x, image.y)
+				}else {
+					// image is not being dragged
+					ctx.drawImage(image.image, image.x, image.y)
+				}
+
+			}
+		}
+	}
+</script>
